@@ -44,7 +44,7 @@ int main() {
     char *passed_hash = (char *)malloc(sizeof(char) * 65 );
     memset(passed_hash, 0, sizeof(char) * 65);
     unsigned int noice = get_noice("./files/noice.txt");
-  
+
 
 
     len = get_hash("./files/hash.csv", hashes, games);
@@ -125,7 +125,6 @@ int main() {
     /* Copy input data to memory buffer */
     ret = clEnqueueWriteBuffer(command_queue, hashes_buff, CL_TRUE, 0, sizeof(char) * 64 * MAX_HASHES, hash_flatten, 0, NULL, NULL);
     ret |= clEnqueueWriteBuffer(command_queue, games_buff, CL_TRUE, 0, sizeof(char) * 32 * MAX_HASHES, game_flatten, 0, NULL, NULL);
-    ret |= clEnqueueWriteBuffer(command_queue, start_buff, CL_TRUE, 0, sizeof(int) + 1, (int *)&noice, 0, NULL, NULL);
 
     if (ret != CL_SUCCESS) {
         printf("Failed to copy data to memory buffer.\n");
@@ -159,40 +158,55 @@ int main() {
         goto error; 
     }
 
-    /* Set OpenCL kernel arguments */
 
-    ret  = clSetKernelArg(kernel, 0, sizeof(cl_mem), (void *) &hashes_buff);
-    ret |= clSetKernelArg(kernel, 1, sizeof(cl_mem), (void *) &games_buff);
-    ret |= clSetKernelArg(kernel, 2, sizeof(cl_mem), (void *) &passed_hash_buff);
-    ret |= clSetKernelArg(kernel, 3, sizeof(cl_mem), (void *) &start_buff);
-    ret |= clSetKernelArg(kernel, 4, sizeof(cl_int), (void *) &len);
+    while(1) {
 
-    if (ret != CL_SUCCESS) {
-        printf("Failed to set kernel arguments %d\n", (int) ret);
-        goto error;
+        noice = get_noice("files/noice");
+
+
+        ret |= clEnqueueWriteBuffer(command_queue, start_buff, CL_TRUE, 0, sizeof(int) + 1, (int *)&noice, 0, NULL, NULL);
+
+        if (fet != CL_SUCCESS){
+            printf("Failed to copy noice into the memory %d/n", (int) ret);
+            goto error;
+        }
+
+        /* Set OpenCL kernel arguments */
+
+        ret = clSetKernelArg(kernel, 0, sizeof(cl_mem), (void *) &hashes_buff);
+        ret |= clSetKernelArg(kernel, 1, sizeof(cl_mem), (void *) &games_buff);
+        ret |= clSetKernelArg(kernel, 2, sizeof(cl_mem), (void *) &passed_hash_buff);
+        ret |= clSetKernelArg(kernel, 3, sizeof(cl_mem), (void *) &start_buff);
+        ret |= clSetKernelArg(kernel, 4, sizeof(cl_int), (void *) &len);
+
+        if (ret != CL_SUCCESS) {
+            printf("Failed to set kernel arguments %d\n", (int) ret);
+            goto error;
+        }
+
+        /* Execute OpenCL kernel */
+
+        size_t global_item_size = CL_DEVICE_MAX_WORK_ITEM_SIZES;
+
+        ret = clEnqueueNDRangeKernel(command_queue, kernel, 1, NULL, &global_item_size, NULL, 0, NULL, NULL);
+        if (ret != CL_SUCCESS) {
+            printf("Failed to execute kernel %d\n", (int) ret);
+            goto error;
+        }
+
+
+
+        /* Copy results from the memory buffer */
+        ret = clEnqueueReadBuffer(command_queue, passed_hash_buff, CL_TRUE, 0, 65, (void *) passed_hash, 0, NULL, NULL);
+        if (ret != CL_SUCCESS) {
+            printf("Failed to copy data from device to host %d\n", (int) ret);
+            goto error;
+        }
+        printf("copy data from device to host %d\n", (int) ret);
+        printf("passed_hash: %s\n", passed_hash);
+
+        update_noice("files/noice.txt");
     }
-
-    /* Execute OpenCL kernel */
-
-    size_t global_item_size = CL_DEVICE_MAX_WORK_ITEM_SIZES;
-
-    ret = clEnqueueNDRangeKernel(command_queue, kernel, 1, NULL, &global_item_size, NULL, 0, NULL, NULL);
-    if (ret != CL_SUCCESS) {
-        printf("Failed to execute kernel %d\n", (int) ret);
-        goto error;
-    }
-
-
-
-    /* Copy results from the memory buffer */
-	ret = clEnqueueReadBuffer(command_queue, passed_hash_buff, CL_TRUE, 0, 65, (void *)passed_hash, 0, NULL, NULL);
-	if (ret != CL_SUCCESS) {
-		printf("Failed to copy data from device to host %d\n", (int) ret);
-		goto error;
-	}
-    printf("copy data from device to host %d\n", (int) ret);
-    printf("passed_hash: %s\n", passed_hash);
-
 
 
     /* Finalization */

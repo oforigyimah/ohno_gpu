@@ -11,13 +11,13 @@ unsigned int get_noice(char *filepath){
     return noice;
 }
 
-void update_noice(char *filepath, unsigned int noice){
+void update_noice(char *filepath){
     FILE *fp;
     unsigned int prev_noice = get_noice(filepath);
     fp = fopen(filepath, "w");
     if (fp == NULL)
         exit(EXIT_FAILURE);
-    fprintf(fp, "%d", prev_noice + noice);
+    fprintf(fp, "%d", prev_noice + 4100);
     fclose(fp);
 }
 

@@ -17,7 +17,7 @@
 
 
 unsigned int get_noice(char *filepath);
-void update_noice(char *filepath, unsigned int noice);
+void update_noice(char *filepath);
 int get_hash(char *filepath, char *hashes[MAX_HASHES], char *games[MAX_HASHES]);
 void flatten2DArray(int rows, int cols, char *inputArray[], char *outputArray);
 void pad_string(char *str);
