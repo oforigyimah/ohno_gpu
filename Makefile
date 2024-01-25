@@ -5,7 +5,7 @@ example_sha256: sha256.c sha256.h example.c
 	gcc -O3 -Wall -Wextra -pedantic example.c sha256.c -o example_sha256
 
 main: main.c helper-function.c
-	gcc -o ohno -D CL_TARGET_OPENCL_VERSION=120 main.c helper-function.c -lOpenCL -lm
+	gcc -o ohno -D CL_TARGET_OPENCL_VERSION=120 main.c helper-function.c -lOpenCL -lm -lSDL2 -lcurl
 	./ohno
 
 debug: main.c
@@ -19,4 +19,4 @@ run:
 	./ohno
 
 clean:
-	rm -f ohno tests_256 example_sha256 *.o *.exe
+	rm -f ohno tests_256 example_sha256 *.o *.exe [0-9]*[0-9]

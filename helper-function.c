@@ -1,12 +1,15 @@
 #include "main.h"
+#include <SDL2/SDL.h>
+#include <time.h>
+#include <curl/curl.h>
 
-unsigned int get_noice(char *filepath){
+long unsigned int get_noice(char *filepath){
     FILE *fp;
-    unsigned int noice;
+    long unsigned int noice;
     fp = fopen(filepath, "r");
     if (fp == NULL)
         exit(EXIT_FAILURE);
-    fscanf(fp, "%d", &noice);
+    fscanf(fp, "%ld", &noice);
     fclose(fp);
     return noice;
 }
@@ -17,7 +20,7 @@ void update_noice(char *filepath){
     fp = fopen(filepath, "w");
     if (fp == NULL)
         exit(EXIT_FAILURE);
-    fprintf(fp, "%d", prev_noice + 4100);
+    fprintf(fp, "%d", prev_noice + 4101);
     fclose(fp);
 }
 
@@ -65,3 +68,89 @@ void pad_string(char *str) {
         str[32] = '\0';  // Null-terminate the string
     }
 }
+
+int play_audio(char *filepath) {
+    printf("Playing audio: %s\n", filepath);
+
+    if (SDL_Init(SDL_INIT_AUDIO) < 0)
+        return 2;
+    Uint8 *wavStart;
+    Uint32 wavLength;
+    SDL_AudioSpec wavSpec;
+
+    if (SDL_LoadWAV(filepath, &wavSpec, &wavStart, &wavLength) == NULL)
+        return 1;
+
+    SDL_AudioDeviceID deviceId = SDL_OpenAudioDevice(NULL, 0, &wavSpec, NULL, 0);
+
+    if (deviceId == 0)
+        return 1;
+
+    int success = SDL_QueueAudio(deviceId, wavStart, wavLength);
+    SDL_PauseAudioDevice(deviceId, 0);
+
+    SDL_Delay(5000);
+
+    SDL_CloseAudioDevice(deviceId);
+    SDL_FreeWAV(wavStart);
+    SDL_Quit();
+    return 0;
+}
+
+int handle_passed_hash(char *passed_hash){
+    pid_t pid;
+    time_t  now = time(NULL);
+    char filename[20];
+    sprintf(filename, "%ld", now);
+    FILE *fp = fopen(filename, "w");
+    if (fp == NULL) {
+        printf("Error Opening FIle");
+        return 1;
+    }
+
+    fprintf(fp, "%s", passed_hash);
+    fclose(fp);
+    memset(passed_hash, 0, sizeof(char) * 65);
+    printf("passed_hash: %s\n", passed_hash);
+    play_audio("./beep-17.wav");
+    return 0;
+
+}
+
+int download_file(const char *url, const char *path) {
+    CURL *curl;
+    FILE *file;
+    CURLcode res;
+
+
+    if (system("ping -c 1 8.8.8.8 > /dev/null 2>&1") != 0){
+        fprintf(stderr, "No internet connection\n");
+        return 1;
+    }
+
+    curl = curl_easy_init();
+    if (curl) {
+        file = fopen(path, "w");
+        if (file) {
+            curl_easy_setopt(curl, CURLOPT_URL, url);
+            curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, NULL);
+            curl_easy_setopt(curl, CURLOPT_WRITEDATA, file);
+            res = curl_easy_perform(curl);
+            /* always cleanup */
+            curl_easy_cleanup(curl);
+            fclose(file);
+            if (res != CURLE_OK) {
+                fprintf(stderr, "curl_easy_perform() failed: %s\n", curl_easy_strerror(res));
+                return 1;
+            }
+        } else {
+            fprintf(stderr, "Cannot open file: %s\n", path);
+            return 1;
+        }
+    } else {
+        fprintf(stderr, "curl_easy_init() failed\n");
+        return 1;
+    }
+    return 0;
+}
+

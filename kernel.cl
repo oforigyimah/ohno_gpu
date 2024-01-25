@@ -476,11 +476,11 @@ __kernel void calSha256(
         __global const char *hashes,
         __global const char *games,
         __global char *passed_hash,
-        __global const int start[],
+        __global const long unsigned int start[],
         const int len
 )
 {
-    int idx = get_global_id(0) * (start[0] + 1);
+    int idx = get_global_id(0);
     char num[512];
     _uint8 sha512_byte_array[SHA512_HASH_SIZE];
     _uint8 sha256_byte_array[SHA256_HASH_SIZE];
@@ -494,42 +494,45 @@ __kernel void calSha256(
     _uint8 _hashes_byte_array[30][32];
     int boo;
 
+    for (int q = 0; q < 2; q++) {
+        if (q) _itoa(idx + start[0], num, 10);
+        else _itoa(-((long signed int) (idx + start[0])), num, 10);
+        sha512(num, _strlen(num), sha512_byte_array);
+        byte_array_to_hex(sha512_byte_array, sha512_hex_string, SHA512_HASH_SIZE);
 
-    _itoa(idx, num, 10);
-    sha512(num, _strlen(num), sha512_byte_array);
-    byte_array_to_hex(sha512_byte_array, sha512_hex_string, SHA512_HASH_SIZE);
-
-    for (int i = 0; i < len; i++) {
-        slice(hashes, _hashes[i], i*64, (i+1)*64);
-        hex_to_byte_array(_hashes[i], _hashes_byte_array[i], 64);
-    }
-    for (int i = 0; i < len; i++) {
-        slice(games, _games[i], i*32, (i+1)*32);
-    }
-
-
-    for (int i = 0; i < 64; i++) {
-        slice(sha512_hex_string, sliced_hex_string, i, 64 + i);
-        strcpy(hash, sliced_hex_string);
-
-
-        for (int count = 0; count < 100000; count++) {
-
-            sha256(hash, _strlen(sliced_hex_string), sha256_byte_array);
-            byte_array_to_hex(sha256_byte_array, hash, SHA256_HASH_SIZE);
-
-            for (int w = 0; w < len; w++) {
-                boo = cmp_byte_array(_hashes_byte_array[w], sha256_byte_array, SHA256_HASH_SIZE);
-                if (boo) {
-                    strcpy(passed_hash, sliced_hex_string);
-                    printf("passed hash is %s\n", passed_hash);
-                    printf("game is %s\n", _games[w]);
-                    return;
-                }
-            }
+        for (int i = 0; i < len; i++) {
+            slice(hashes, _hashes[i], i * 64, (i + 1) * 64);
+            hex_to_byte_array(_hashes[i], _hashes_byte_array[i], 64);
+        }
+        for (int i = 0; i < len; i++) {
+            slice(games, _games[i], i * 32, (i + 1) * 32);
         }
 
 
+        for (int i = 0; i < 64; i++) {
+            slice(sha512_hex_string, sliced_hex_string, i, 64 + i);
+            strcpy(hash, sliced_hex_string);
+
+
+            for (int count = 0; count < 10000; count++) {
+
+                sha256(hash, _strlen(sliced_hex_string), sha256_byte_array);
+                byte_array_to_hex(sha256_byte_array, hash, SHA256_HASH_SIZE);
+
+                for (int w = 0; w < len; w++) {
+                    boo = cmp_byte_array(_hashes_byte_array[w], sha256_byte_array, SHA256_HASH_SIZE);
+                    if (boo) {
+                        strcpy(passed_hash, sliced_hex_string);
+                        printf("passed hash is %s\n", passed_hash);
+                        printf("game is %s\n", _games[w]);
+                        printf("idx is %d\n", idx);
+                        return;
+                    }
+                }
+            }
+
+
+        }
     }
 
 }

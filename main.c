@@ -1,10 +1,16 @@
 #include "main.h"
+#include <unistd.h>
 #include <CL/cl.h>
 
 
 int main() {
+
+    PRINT_LINE("STARTING PROGRAM")
+//    download_file(DOWNLOAD_URL, "./files/messages.json");
+
     char **hashes;
     char **games;
+    pid_t pid;
     hashes = malloc(MAX_HASHES * sizeof(char *));
     games = malloc(MAX_HASHES * sizeof(char *));
 
@@ -43,7 +49,25 @@ int main() {
     int len;
     char *passed_hash = (char *)malloc(sizeof(char) * 65 );
     memset(passed_hash, 0, sizeof(char) * 65);
-    unsigned int noice = get_noice("./files/noice.txt");
+    long unsigned int noice = get_noice("./files/noice.txt");
+
+    char reference[65];
+    memset(reference, 0, sizeof(char) * 65);
+
+
+    printf("Welcome to ash hash cracker\n");
+    printf(":::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::");
+    printf(":::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::");
+    printf("1. Start hash cracking\n");
+    printf("2. Upate hash\n");
+    printf("3. Exit\n");
+
+    int choice;
+    scanf("%d", &choice);
+    switch(choice){
+        case 2:
+            download_file(DOWNLOAD_URL, "./files/messages.json");
+    }
 
 
 
@@ -51,8 +75,6 @@ int main() {
     
     flatten2DArray(len, 64, hashes, hash_flatten);
     flatten2DArray(len, 32, games, game_flatten);
-
-
 
     size_t data_size = sizeof(char) * 65 * len;
 
@@ -158,15 +180,18 @@ int main() {
         goto error; 
     }
 
+    int value = 0; // Value to set
+    size_t size = sizeof(char) * 65; // Size of the buffer
 
     while(1) {
-
-        noice = get_noice("files/noice");
-
-
+        ret = clEnqueueFillBuffer(command_queue, passed_hash_buff, &value, sizeof(int), 0, size, 0, NULL, NULL);
+        if (ret != CL_SUCCESS) {
+            printf("Failed to set GPU memory.\n");
+        }
+        memset(passed_hash, 0, sizeof(char) * 65);
+        noice = get_noice("./files/noice.txt");
         ret |= clEnqueueWriteBuffer(command_queue, start_buff, CL_TRUE, 0, sizeof(int) + 1, (int *)&noice, 0, NULL, NULL);
-
-        if (fet != CL_SUCCESS){
+        if (ret != CL_SUCCESS){
             printf("Failed to copy noice into the memory %d/n", (int) ret);
             goto error;
         }
@@ -202,10 +227,19 @@ int main() {
             printf("Failed to copy data from device to host %d\n", (int) ret);
             goto error;
         }
-        printf("copy data from device to host %d\n", (int) ret);
-        printf("passed_hash: %s\n", passed_hash);
-
         update_noice("files/noice.txt");
+
+
+        if (strcmp(passed_hash, reference) == 0);
+        else
+        {
+            pid = fork();
+            if (pid == 0) {
+                printf("Found hash: %s\n", passed_hash);
+                exit(0);
+            }
+        }
+
     }
 
 
@@ -213,7 +247,7 @@ int main() {
 
 error:
 
-    /* free device resouces*/
+    /* free device resources*/
     clFlush(command_queue);
     clFinish(command_queue);
     clReleaseKernel(kernel);
